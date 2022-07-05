@@ -182,3 +182,35 @@ class SemiSupervisedLearning(Learning):
             self.self_learn_x = self.filter(unannotated_x, indices)
             self.self_learn_x_features = self.filter(preds.features, indices)
             self.self_learn_y = self.filter(preds.groups, indices)
+    def explore_educate_in_notebook_with_labels(
+        self,
+        x: Union[List[str], List[int], List[float], np.ndarray],
+        dataset,
+        num_sample: int = 2,
+        data_type: str = "text",
+    ):
+
+        super().explore_educate_in_notebook_with_labels(
+            x=x, dataset, num_sample=num_sample, data_type=data_type
+        )
+
+        # Train model after human annotation
+        self.learn()
+
+        # Identify high confidence unannotated data
+        unannotated_x = self.filter(x, self.learn_indices)
+        x_features = self.embeddings_model.convert(unannotated_x)
+        preds = self.classification_model.predict_proba(x_features)
+
+        indices, values = self.most_confidence_sampling(preds.values, len(preds))
+        if len(indices) > 0:
+            preds.keep(indices)
+            # Replace original probabilies by sampling values
+            preds.values = values
+
+            # NOT original indices. These are filtered indices
+            indices = preds.indices
+            # self.self_learn_x_indices = self.filter(unannotated_x, indices)
+            self.self_learn_x = self.filter(unannotated_x, indices)
+            self.self_learn_x_features = self.filter(preds.features, indices)
+            self.self_learn_y = self.filter(preds.groups, indices)

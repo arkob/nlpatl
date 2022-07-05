@@ -463,6 +463,51 @@ class Learning:
                 self.add_unique_y(label)
 
             i += 1
+    def show_in_notebook_with_labels(self, result: Dataset,dataset, data_type: str = "text"):
+        #adding dataset as dictionary to take whole dataset and label from it, if found then take label
+        i = 0
+        while i < len(result.features):
+            inputs = result.inputs[i]
+            feature = result.features[i]
+            _id = result.indices[i]
+            metadata = "{}/{} Existing Label:{}\nID:{}\n".format(
+                i + 1,
+                len(result.features),
+                list(self.unique_y) if self.unique_y else [],
+                _id,
+            )
+
+            # Display
+            if data_type == "text":
+                metadata += inputs + "\n"
+            elif data_type == "image":
+                IPython.display.display(PIL.Image.fromarray(inputs))
+            elif data_type == 'audio':
+                # Need force display the "display" object
+                IPython.display.display(
+                    IPython.display.Audio(inputs[0], rate=inputs[1])
+                )
+
+            #label = input(metadata)
+            search_label_df = dataset.loc[dataset['Review'] == inputs]
+            label = search_label_df['Type of Review'][0]
+            print(inputs)
+            print(label)
+            if not (label or label.strip()):
+                # Prompt same record again
+                continue
+
+            if self.multi_label:
+                labels = label.split(",")
+                labels = list(set([label for label in labels if label]))
+
+                self.educate(_id, inputs, feature, labels)
+                self.add_unique_y(labels)
+            else:
+                self.educate(_id, inputs, feature, label)
+                self.add_unique_y(label)
+
+            i += 1
 
     def explore_educate_in_notebook(
         self,
@@ -495,3 +540,35 @@ class Learning:
 
         result = self.explore(x, num_sample=num_sample, return_type="object")
         self.show_in_notebook(result, data_type=data_type)
+    def explore_educate_in_notebook_with_labels(
+        self,
+        x: [List[str], List[int], List[float], np.ndarray],
+        dataset,
+        num_sample: int = 2,
+        data_type: str = "text",
+    ):
+        """
+        Estimate the most valuable data points for annotation and
+        annotate it in IPython Notebook. Executing `explore` function
+        and `educate` function sequentially.
+
+        :param x: Raw data inputs. It can be text, number or numpy (for image).
+        :type x: list of string, int or float or :class:`np.ndarray`
+        :param return_type: Data type of returning object. If `dict` is
+                assigned. Return object is `dict`. Possible values are `dict`
+                and `object`.
+        :type return_type: str
+        :param num_sample: Maximum number of data points for annotation.
+        :type num_sample: int
+        :param str data_type: Indicate the data format for displying in
+                IPython Notebook. Possible values are `text` and `image`.
+        """
+
+        assert (
+            data_type in self.DATA_TYPES
+        ), "`data_type` should be one of [`{}`] but not `{}`".format(
+            "`,`".join(self.DATA_TYPES), data_type
+        )
+
+        result = self.explore(x, num_sample=num_sample, return_type="object")
+        self.show_in_notebook_with_labels(result,dataset, data_type=data_type)
